@@ -36,15 +36,17 @@ class UsuariosView(ctk.CTkFrame):
     #  CONSTRUCTOR
     # ══════════════════════════════════════════════════════════════════
 
-    def __init__(self, parent, tema=None, fuentes=None, **kwargs):
+    def __init__(self, parent, tema=None, fuentes=None, usuario_actual=None, **kwargs):
         """Inicializa la vista de usuarios.
 
         Args:
             parent:  Widget padre donde se coloca este frame.
             tema:    Dict de colores del tema activo.
             fuentes: Dict de tamaños de fuente activos.
+            usuario_actual: Usuario actualmente autenticado.
         """
         super().__init__(parent, fg_color="transparent", **kwargs)
+        self.usuario_actual = usuario_actual
 
         # Colores dinámicos
         t = tema or {}
@@ -591,6 +593,12 @@ class UsuariosView(ctk.CTkFrame):
             return
 
         id_sel = self.id_usuario_seleccionado
+        
+        if self.usuario_actual and self.usuario_actual.id == id_sel:
+            self._mostrar_mensaje(
+                "Acción denegada: No puedes eliminar tu propia cuenta activa.", es_error=True
+            )
+            return
 
         def _on_eliminado(resultado):
             exito, mensaje = resultado

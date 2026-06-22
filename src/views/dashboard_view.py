@@ -356,11 +356,19 @@ class DashboardView(ctk.CTkToplevel):
         """Retorna la vista cacheada o la crea si no existe."""
         if clave not in self._cache_vistas:
             clase = self._VISTA_CLASES[clave]
-            self._cache_vistas[clave] = clase(
-                self.contenedor_pagina,
-                tema=self.colores,
-                fuentes=self.fuentes,
-            )
+            if clave == "usuarios":
+                self._cache_vistas[clave] = clase(
+                    self.contenedor_pagina,
+                    tema=self.colores,
+                    fuentes=self.fuentes,
+                    usuario_actual=self.usuario,
+                )
+            else:
+                self._cache_vistas[clave] = clase(
+                    self.contenedor_pagina,
+                    tema=self.colores,
+                    fuentes=self.fuentes,
+                )
         return self._cache_vistas[clave]
 
     def _invalidar_cache(self):
