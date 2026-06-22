@@ -4,7 +4,7 @@ import faker
 from datetime import datetime
 
 fake = faker.Faker()
-DB_NAME = 'database\database.db' # Coloca la ruta real de tu archivo .db
+DB_NAME = r'database\database.db' # Coloca la ruta real de tu archivo .db
 
 def poblar_sistema_medico():
     conexion = sqlite3.connect(DB_NAME)
@@ -16,9 +16,38 @@ def poblar_sistema_medico():
     cursor.execute("PRAGMA cache_size = -100000;")
     cursor.execute("PRAGMA foreign_keys = OFF;") # Desactivar temporalmente para máxima velocidad
     
-    # Asegurar que exista al menos un color de prueba con ID 1
-    cursor.execute("INSERT OR IGNORE INTO colores (id, valor, estado) VALUES (1, 'Color de Prueba', 1);")
+    # Los 10 colores oficiales del hospital (decena del último par de num_historia)
+    colores_oficiales = [
+        "Marron",        # 00-09
+        "Azul Marino",   # 10-19
+        "Verde",         # 20-29
+        "Naranja",       # 30-39
+        "Morado",        # 40-49
+        "Rosa",          # 50-59
+        "Turquesa",      # 60-69
+        "Amarillo",      # 70-79
+        "Rojo",          # 80-89
+        "Azul Celeste",  # 90-99
+    ]
+    
+    # Asegurar que existan los colores oficiales en la base de datos
+    for idx, color_name in enumerate(colores_oficiales, start=1):
+        cursor.execute(
+            "INSERT OR IGNORE INTO colores (id, valor, estado) VALUES (?, ?, 1);",
+            (idx, color_name)
+        )
     conexion.commit()
+    
+    # Mapear nombres de color a sus IDs en la base de datos
+    cursor.execute("SELECT id, valor FROM colores;")
+    color_map = {row[1]: row[0] for row in cursor.fetchall()}
+    
+    # Cargar cédulas e historias existentes para garantizar unicidad absoluta
+    cursor.execute("SELECT cedula FROM pacientes WHERE cedula IS NOT NULL;")
+    cedulas_existentes = {row[0] for row in cursor.fetchall()}
+    
+    cursor.execute("SELECT num_historia FROM tarjetas;")
+    historias_existentes = {row[0] for row in cursor.fetchall()}
     
     # Averiguar en qué ID comenzar por si ya tienes datos previos
     cursor.execute("SELECT MAX(id) FROM pacientes;")
@@ -38,8 +67,28 @@ def poblar_sistema_medico():
         lista_tarjetas = []
         
         for _ in range(tamano_lote):
-            cedula = f"{random.choice(['V', 'E'])}-{id_actual:08d}"
-            num_historia = f"{random.randint(10,99)}-{random.randint(10,99)}-{id_actual}" # Garantiza historia única
+            # Generar cédula única y realista (rango 10,000,000 - 39,999,999, sin ceros a la izquierda)
+            while True:
+                num_cedula = random.randint(10000000, 39999999)
+                cedula = f"{random.choice(['V', 'E'])}-{num_cedula}"
+                if cedula not in cedulas_existentes:
+                    cedulas_existentes.add(cedula)
+                    break
+            
+            # Generar número de historia único en formato XX-XX-XX
+            while True:
+                p1 = random.randint(10, 99)
+                p2 = random.randint(10, 99)
+                p3 = random.randint(0, 99)
+                num_historia = f"{p1:02d}-{p2:02d}-{p3:02d}"
+                if num_historia not in historias_existentes:
+                    historias_existentes.add(num_historia)
+                    break
+            
+            # Determinar el color correcto según el último par de dígitos
+            decena = p3 // 10
+            color_nombre = colores_oficiales[decena]
+            id_color = color_map.get(color_nombre, 1)
             
             # Datos alineados estrictamente a tus columnas de 'pacientes'
             # (id, nombre1, nombre2, apellido1, apellido2, cedula, lugar_nacimiento, fecha_nacimiento, estado_vital, estado)
@@ -62,7 +111,7 @@ def poblar_sistema_medico():
             tarjeta = (
                 num_historia,
                 id_actual,
-                1, # ID del color creado al inicio
+                id_color,
                 1  # Estado activa
             )
             lista_tarjetas.append(tarjeta)
