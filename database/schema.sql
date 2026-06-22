@@ -36,6 +36,12 @@ CREATE TABLE IF NOT EXISTS "usuarios" (
 	"usuario"	TEXT NOT NULL UNIQUE,
 	"clave"	TEXT NOT NULL,
 	"estado"	INTEGER,
+	"pregunta1" TEXT,
+	"respuesta1" TEXT,
+	"pregunta2" TEXT,
+	"respuesta2" TEXT,
+	"pregunta3" TEXT,
+	"respuesta3" TEXT,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 CREATE VIEW IF NOT EXISTS vista_paciente_tarjeta AS

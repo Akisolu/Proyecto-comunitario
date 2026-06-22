@@ -1,19 +1,23 @@
-import os
-import sys
 
-# ── Agregar 'src/' al path para que los imports internos funcionen ──
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+import sys
+import os
+import sqlite3
+if getattr(sys, "frozen", False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 SRC_DIR = os.path.join(BASE_DIR, "src")
 sys.path.insert(0, SRC_DIR)
 
-import sqlite3
-# pyrefly: ignore [missing-import]
 import customtkinter as ctk
-# pyrefly: ignore [missing-import]
 from views.dashboard_view import DashboardView
-# pyrefly: ignore [missing-import]
 from views.login_view import LoginView
 from utils.logging_config import inicializar_logs
+
+# pyrefly: ignore [missing-import]
+# pyrefly: ignore [missing-import]
+# pyrefly: ignore [missing-import]
 
 
 # ── Rutas de la base de datos ─────────────────────────────────────

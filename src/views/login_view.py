@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from controllers.auth_controller import AuthController
+from views.recuperar_clave_view import RecuperarClaveView
 
 
 class LoginView(ctk.CTkToplevel):
@@ -47,7 +48,7 @@ class LoginView(ctk.CTkToplevel):
         self.resizable(False, False)
 
         # Tamaño y centrado
-        ancho, alto = 480, 580
+        ancho, alto = 480, 620
         pantalla_ancho = self.winfo_screenwidth()
         pantalla_alto = self.winfo_screenheight()
         x = (pantalla_ancho - ancho) // 2
@@ -68,7 +69,7 @@ class LoginView(ctk.CTkToplevel):
             border_color=self.COLOR_ENTRY_BORDER,
         )
         self.panel.place(relx=0.5, rely=0.5, anchor="center",
-                         relwidth=0.85, relheight=0.88)
+                         relwidth=0.85, relheight=0.90)
 
         # ── Icono / indicador visual ──
         icono_frame = ctk.CTkFrame(
@@ -173,6 +174,20 @@ class LoginView(ctk.CTkToplevel):
         )
         self.btn_login.pack(fill="x", padx=36, pady=(0, 12))
 
+        # ── Botón: Olvidé mi contraseña ──
+        self.btn_recuperar = ctk.CTkButton(
+            self.panel,
+            text="¿Olvidó su contraseña?",
+            height=30,
+            corner_radius=10,
+            font=ctk.CTkFont(family="Segoe UI", size=12, underline=True),
+            fg_color="transparent",
+            hover_color=self.COLOR_ENTRY_BG,
+            text_color=self.COLOR_ACCENT,
+            command=self._abrir_recuperacion,
+        )
+        self.btn_recuperar.pack(fill="x", padx=36, pady=(0, 12))
+
         # ── Bind: Enter para hacer login ──
         self.entry_usuario.bind("<Return>", lambda e: self.entry_clave.focus_set())
         self.entry_clave.bind("<Return>", lambda e: self._intentar_login())
@@ -230,3 +245,7 @@ class LoginView(ctk.CTkToplevel):
         """Al cerrar la ventana de login, se cierra toda la aplicación."""
         self.grab_release()
         self.master.destroy()
+
+    def _abrir_recuperacion(self):
+        """Abre la ventana de recuperación de contraseña."""
+        RecuperarClaveView(self)

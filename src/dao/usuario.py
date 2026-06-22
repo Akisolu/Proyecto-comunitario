@@ -23,8 +23,9 @@ class UsuarioDAO:
         cursor = conn.cursor()
         query = """
             INSERT INTO usuarios
-                (nombre, apellido, cedula, usuario, clave, estado)
-            VALUES (?, ?, ?, ?, ?, 1)
+                (nombre, apellido, cedula, usuario, clave, estado,
+                 pregunta1, respuesta1, pregunta2, respuesta2, pregunta3, respuesta3)
+            VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
         """
         try:
             clave_hash = self._hash_clave(usuario.clave)
@@ -34,6 +35,12 @@ class UsuarioDAO:
                 usuario.cedula,
                 usuario.usuario,
                 clave_hash,
+                usuario.pregunta1,
+                usuario.respuesta1.lower() if usuario.respuesta1 else None,
+                usuario.pregunta2,
+                usuario.respuesta2.lower() if usuario.respuesta2 else None,
+                usuario.pregunta3,
+                usuario.respuesta3.lower() if usuario.respuesta3 else None,
             ))
             conn.commit()
             return cursor.lastrowid
@@ -48,7 +55,8 @@ class UsuarioDAO:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, nombre, apellido, cedula, usuario, estado "
+            "SELECT id, nombre, apellido, cedula, usuario, estado, "
+            "pregunta1, respuesta1, pregunta2, respuesta2, pregunta3, respuesta3 "
             "FROM usuarios WHERE id = ? AND estado = 1",
             (id_usuario,)
         )
@@ -62,7 +70,8 @@ class UsuarioDAO:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, nombre, apellido, cedula, usuario, estado "
+            "SELECT id, nombre, apellido, cedula, usuario, estado, "
+            "pregunta1, respuesta1, pregunta2, respuesta2, pregunta3, respuesta3 "
             "FROM usuarios WHERE estado = 1"
         )
         filas = cursor.fetchall()
@@ -78,7 +87,10 @@ class UsuarioDAO:
         query = """
             UPDATE usuarios
             SET nombre = ?, apellido = ?, cedula = ?,
-                usuario = ?, clave = ?
+                usuario = ?, clave = ?,
+                pregunta1 = ?, respuesta1 = ?,
+                pregunta2 = ?, respuesta2 = ?,
+                pregunta3 = ?, respuesta3 = ?
             WHERE id = ? AND estado = 1
         """
         try:
@@ -89,6 +101,12 @@ class UsuarioDAO:
                 usuario.cedula,
                 usuario.usuario,
                 clave_hash,
+                usuario.pregunta1,
+                usuario.respuesta1.lower() if usuario.respuesta1 else None,
+                usuario.pregunta2,
+                usuario.respuesta2.lower() if usuario.respuesta2 else None,
+                usuario.pregunta3,
+                usuario.respuesta3.lower() if usuario.respuesta3 else None,
                 id_usuario,
             ))
             conn.commit()
@@ -123,7 +141,8 @@ class UsuarioDAO:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, nombre, apellido, cedula, usuario, clave, estado "
+            "SELECT id, nombre, apellido, cedula, usuario, clave, estado, "
+            "pregunta1, respuesta1, pregunta2, respuesta2, pregunta3, respuesta3 "
             "FROM usuarios WHERE usuario = ? AND estado = 1",
             (nombre_usuario,)
         )
@@ -188,4 +207,33 @@ class UsuarioDAO:
         conn.commit()
         conn.close()
         return True, "Contraseña actualizada exitosamente."
+
+    def obtener_por_usuario(self, nombre_usuario: str) -> Usuario | None:
+        """Obtiene un usuario activo por su nombre de usuario (para recuperación)."""
+        conn = self.db.obtener_conexion()
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, nombre, apellido, cedula, usuario, estado, "
+            "pregunta1, respuesta1, pregunta2, respuesta2, pregunta3, respuesta3 "
+            "FROM usuarios WHERE usuario = ? AND estado = 1",
+            (nombre_usuario,)
+        )
+        fila = cursor.fetchone()
+        conn.close()
+        return Usuario(**dict(fila)) if fila else None
+
+    def resetear_clave(self, id_usuario: int, nueva_clave: str) -> bool:
+        """Fuerza el cambio de contraseña (para recuperación)."""
+        conn = self.db.obtener_conexion()
+        cursor = conn.cursor()
+        hash_nueva = self._hash_clave(nueva_clave)
+        cursor.execute(
+            "UPDATE usuarios SET clave = ? WHERE id = ? AND estado = 1",
+            (hash_nueva, id_usuario),
+        )
+        exito = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return exito
 

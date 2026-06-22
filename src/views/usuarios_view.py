@@ -302,6 +302,55 @@ class UsuariosView(ctk.CTkFrame):
         )
         self.entrada_clave.pack(fill="x", padx=8, pady=(0, 10))
 
+        # ── Preguntas de seguridad ──
+        ctk.CTkLabel(
+            scroll_form, text="Pregunta de Seguridad 1", **estilo_etiqueta
+        ).pack(fill="x", padx=8, pady=(0, 4))
+        self.entrada_pregunta1 = ctk.CTkEntry(
+            scroll_form, placeholder_text="Ej: ¿Cuál es el nombre de tu primera mascota?", **estilo_entrada
+        )
+        self.entrada_pregunta1.pack(fill="x", padx=8, pady=(0, 10))
+
+        ctk.CTkLabel(
+            scroll_form, text="Respuesta 1", **estilo_etiqueta
+        ).pack(fill="x", padx=8, pady=(0, 4))
+        self.entrada_respuesta1 = ctk.CTkEntry(
+            scroll_form, placeholder_text="Tu respuesta", **estilo_entrada
+        )
+        self.entrada_respuesta1.pack(fill="x", padx=8, pady=(0, 10))
+
+        ctk.CTkLabel(
+            scroll_form, text="Pregunta de Seguridad 2", **estilo_etiqueta
+        ).pack(fill="x", padx=8, pady=(0, 4))
+        self.entrada_pregunta2 = ctk.CTkEntry(
+            scroll_form, placeholder_text="Ej: ¿En qué ciudad naciste?", **estilo_entrada
+        )
+        self.entrada_pregunta2.pack(fill="x", padx=8, pady=(0, 10))
+
+        ctk.CTkLabel(
+            scroll_form, text="Respuesta 2", **estilo_etiqueta
+        ).pack(fill="x", padx=8, pady=(0, 4))
+        self.entrada_respuesta2 = ctk.CTkEntry(
+            scroll_form, placeholder_text="Tu respuesta", **estilo_entrada
+        )
+        self.entrada_respuesta2.pack(fill="x", padx=8, pady=(0, 10))
+
+        ctk.CTkLabel(
+            scroll_form, text="Pregunta de Seguridad 3", **estilo_etiqueta
+        ).pack(fill="x", padx=8, pady=(0, 4))
+        self.entrada_pregunta3 = ctk.CTkEntry(
+            scroll_form, placeholder_text="Ej: ¿Cuál es tu color favorito?", **estilo_entrada
+        )
+        self.entrada_pregunta3.pack(fill="x", padx=8, pady=(0, 10))
+
+        ctk.CTkLabel(
+            scroll_form, text="Respuesta 3", **estilo_etiqueta
+        ).pack(fill="x", padx=8, pady=(0, 4))
+        self.entrada_respuesta3 = ctk.CTkEntry(
+            scroll_form, placeholder_text="Tu respuesta", **estilo_entrada
+        )
+        self.entrada_respuesta3.pack(fill="x", padx=8, pady=(0, 10))
+
         # ── Etiqueta de errores de validación ──
         self.etiqueta_errores_formulario = ctk.CTkLabel(
             scroll_form, text="",
@@ -471,6 +520,13 @@ class UsuariosView(ctk.CTkFrame):
         self._establecer_texto_entrada(self.entrada_cedula, str(usuario.cedula))
         self._establecer_texto_entrada(self.entrada_usuario, usuario.usuario)
         self.entrada_clave.delete(0, "end")
+        
+        self._establecer_texto_entrada(self.entrada_pregunta1, usuario.pregunta1 or "")
+        self._establecer_texto_entrada(self.entrada_respuesta1, usuario.respuesta1 or "")
+        self._establecer_texto_entrada(self.entrada_pregunta2, usuario.pregunta2 or "")
+        self._establecer_texto_entrada(self.entrada_respuesta2, usuario.respuesta2 or "")
+        self._establecer_texto_entrada(self.entrada_pregunta3, usuario.pregunta3 or "")
+        self._establecer_texto_entrada(self.entrada_respuesta3, usuario.respuesta3 or "")
 
         # Mostrar sección de cambio de contraseña
         self.seccion_cambio_clave.pack(fill="x")
@@ -608,6 +664,13 @@ class UsuariosView(ctk.CTkFrame):
         cedula_texto = self.entrada_cedula.get().strip()
         usuario = self.entrada_usuario.get().strip()
         clave = self.entrada_clave.get().strip()
+        
+        pregunta1 = self.entrada_pregunta1.get().strip()
+        respuesta1 = self.entrada_respuesta1.get().strip()
+        pregunta2 = self.entrada_pregunta2.get().strip()
+        respuesta2 = self.entrada_respuesta2.get().strip()
+        pregunta3 = self.entrada_pregunta3.get().strip()
+        respuesta3 = self.entrada_respuesta3.get().strip()
 
         # Validar campos obligatorios
         campos_vacios = []
@@ -647,6 +710,12 @@ class UsuariosView(ctk.CTkFrame):
             "cedula": cedula,
             "usuario": usuario,
             "clave": clave,
+            "pregunta1": pregunta1,
+            "respuesta1": respuesta1,
+            "pregunta2": pregunta2,
+            "respuesta2": respuesta2,
+            "pregunta3": pregunta3,
+            "respuesta3": respuesta3,
         }
 
     def _limpiar_formulario(self):
@@ -660,6 +729,14 @@ class UsuariosView(ctk.CTkFrame):
         self.entrada_cedula.delete(0, "end")
         self.entrada_usuario.delete(0, "end")
         self.entrada_clave.delete(0, "end")
+        
+        self.entrada_pregunta1.delete(0, "end")
+        self.entrada_respuesta1.delete(0, "end")
+        self.entrada_pregunta2.delete(0, "end")
+        self.entrada_respuesta2.delete(0, "end")
+        self.entrada_pregunta3.delete(0, "end")
+        self.entrada_respuesta3.delete(0, "end")
+        
         self.etiqueta_errores_formulario.configure(text="")
 
         # Limpiar y ocultar sección de cambio de contraseña

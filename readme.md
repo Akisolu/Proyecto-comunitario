@@ -7,3 +7,10 @@ INSTRUCCIONES PARA INICIAR EL PROYECTO
 5- Activar el entorno con ".venv\Scripts\activate"
 6- Instalar las dependencias con "pip install -r requirements.txt"
 7- Comprobar con "pip list"
+
+INSTRUCCIONES PARA CONSTRUIR EL EJECUTABLE
+
+1- Verificar si tienes instalado Pyinstaller, puedes usar pip freeze para esto
+2- Si esta instalado ejecuta 
+pyinstaller --noconfirm --onedir --windowed --paths=src --add-data "database;database" main.py
+3- Acceder a la carpeta dist y veras el ejecutable

@@ -20,6 +20,10 @@ class UsuarioController:
         Returns:
             Tupla (exito, mensaje).
         """
+        errores = self._validar_preguntas_seguridad(datos)
+        if errores:
+            return False, "Errores de validacion:\n" + "\n".join(errores)
+
         try:
             usuario = UsuarioCreate(**datos)
         except ValidationError as e:
@@ -59,6 +63,10 @@ class UsuarioController:
         Returns:
             Tupla (exito, mensaje).
         """
+        errores = self._validar_preguntas_seguridad(datos)
+        if errores:
+            return False, "Errores de validacion:\n" + "\n".join(errores)
+
         try:
             usuario = UsuarioCreate(**datos)
         except ValidationError as e:
@@ -121,4 +129,16 @@ class UsuarioController:
         return self.usuario_dao.cambiar_clave(
             id_usuario, clave_actual.strip(), clave_nueva.strip()
         )
+
+    def _validar_preguntas_seguridad(self, datos: dict) -> list[str]:
+        """Valida que las preguntas y respuestas de seguridad estén presentes y no vacías."""
+        errores = []
+        for i in range(1, 4):
+            preg = datos.get(f"pregunta{i}")
+            resp = datos.get(f"respuesta{i}")
+            if not preg or not str(preg).strip():
+                errores.append(f"Pregunta de seguridad {i} es obligatoria.")
+            if not resp or not str(resp).strip():
+                errores.append(f"Respuesta de seguridad {i} es obligatoria.")
+        return errores
 
