@@ -128,7 +128,6 @@ def realizar_backup_local() -> tuple[bool, str]:
         nombre_backup = f"backup_{timestamp}.db"
         ruta_backup = os.path.join(BACKUPS_DIR, nombre_backup)
 
-        # Copiar preservando metadatos
         shutil.copy2(DB_PATH, ruta_backup)
 
         logger.info(f"Backup local creado exitosamente: {ruta_backup}")
@@ -149,11 +148,13 @@ def realizar_backup_local() -> tuple[bool, str]:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def subir_a_google_drive(ruta_archivo: str, folder_id: str) -> tuple[bool, str]:
-    """Sube un archivo a Google Drive mediante una Cuenta de Servicio.
+    """Sube un archivo a Google Drive mediante Cuenta de Servicio u OAuth 2.0.
 
-    Utiliza el archivo ``google_credentials.json`` ubicado en el directorio
-    ``database/`` del proyecto para autenticarse. La subida se realiza en
-    modo *resumable* para soportar archivos grandes de forma confiable.
+    Detecta automáticamente el tipo de credenciales en ``google_credentials.json``:
+    - Si es Cuenta de Servicio (Service Account), autentica directamente.
+    - Si es Cliente OAuth 2.0 (Desktop Client), abre el navegador la primera vez
+      y almacena el token persistente en ``database/google_token.json`` para
+      realizar subidas silenciosas futuras.
 
     Requisitos:
         - ``google_credentials.json`` presente en ``database/``
@@ -174,6 +175,10 @@ def subir_a_google_drive(ruta_archivo: str, folder_id: str) -> tuple[bool, str]:
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
+        # OAuth 2.0 imports
+        from google_auth_oauthlib.flow import InstalledAppFlow
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
     except ImportError:
         mensaje = (
             "Las dependencias de Google Drive no están instaladas. "
@@ -199,11 +204,64 @@ def subir_a_google_drive(ruta_archivo: str, folder_id: str) -> tuple[bool, str]:
             logger.error(mensaje)
             return False, mensaje
 
-        # Autenticar con Cuenta de Servicio
+        # Leer archivo JSON de credenciales para detectar tipo
+        import json
+        with open(CREDENTIALS_PATH, "r", encoding="utf-8") as f:
+            cred_data = json.load(f)
+
         scopes = ["https://www.googleapis.com/auth/drive.file"]
-        credenciales = service_account.Credentials.from_service_account_file(
-            CREDENTIALS_PATH, scopes=scopes
-        )
+        credenciales = None
+
+        if "type" in cred_data and cred_data["type"] == "service_account":
+            logger.info("Autenticando con Cuenta de Servicio (Service Account).")
+            credenciales = service_account.Credentials.from_service_account_info(
+                cred_data, scopes=scopes
+            )
+        elif "installed" in cred_data or "web" in cred_data:
+            logger.info("Autenticando con OAuth 2.0 Desktop Client (Cuenta Personal).")
+            token_path = os.path.join(_BASE_DIR, "database", "google_token.json")
+
+            # Intentar cargar token guardado
+            if os.path.exists(token_path):
+                try:
+                    credenciales = Credentials.from_authorized_user_file(token_path, scopes)
+                except Exception as ex:
+                    logger.warning(f"No se pudo cargar el token guardado en {token_path}: {ex}")
+
+            # Verificar validez del token cargado o refrescarlo
+            if not credenciales or not credenciales.valid:
+                if credenciales and credenciales.expired and credenciales.refresh_token:
+                    logger.info("Refrescando token de acceso OAuth 2.0 expirado...")
+                    try:
+                        credenciales.refresh(Request())
+                    except Exception as ex:
+                        logger.warning(f"No se pudo refrescar el token: {ex}. Iniciando flujo nuevo.")
+                        credenciales = None
+
+                if not credenciales:
+                    logger.info("Iniciando flujo de inicio de sesión de Google en el navegador...")
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        CREDENTIALS_PATH, scopes=scopes
+                    )
+                    credenciales = flow.run_local_server(
+                        port=0,
+                        authorization_prompt_message="Por favor, inicia sesión en tu navegador para autorizar a SGI Salud.",
+                        success_message="¡Autorización exitosa! Ya puedes cerrar esta ventana y regresar a la aplicación."
+                    )
+
+                # Guardar el token persistente
+                try:
+                    with open(token_path, "w", encoding="utf-8") as token_file:
+                        token_file.write(credenciales.to_json())
+                    logger.info(f"Token OAuth 2.0 guardado con éxito en: {token_path}")
+                except Exception as ex:
+                    logger.error(f"No se pudo guardar el token en disco: {ex}")
+        else:
+            mensaje = "El archivo google_credentials.json no contiene un formato de credenciales reconocido."
+            logger.error(mensaje)
+            return False, mensaje
+
+        # Crear cliente del API
         servicio = build("drive", "v3", credentials=credenciales)
 
         # Preparar metadatos del archivo

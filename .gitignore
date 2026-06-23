@@ -10,3 +10,4 @@ build/
 main.spec
 google_credentials.json
 backups/
+google_token.json
