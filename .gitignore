@@ -8,3 +8,5 @@ database.db
 dist/
 build/
 main.spec
+google_credentials.json
+backups/

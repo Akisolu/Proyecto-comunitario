@@ -535,4 +535,84 @@ class DashboardView(ctk.CTkToplevel):
         self.on_logout()
 
     def _on_cerrar(self):
-        self.master.destroy()
+        """Cierre de la aplicación con backup automático si está configurado."""
+        if not self.config.backup_al_cerrar:
+            self.master.destroy()
+            return
+
+        # Mostrar ventana de progreso
+        self._popup_backup = ctk.CTkToplevel(self)
+        self._popup_backup.title("Copia de seguridad")
+        self._popup_backup.geometry("360x130")
+        self._popup_backup.resizable(False, False)
+        self._popup_backup.transient(self)
+        self._popup_backup.grab_set()
+        self._popup_backup.configure(fg_color=self.colores.get("fondo", "#0F1923"))
+        self._popup_backup.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        # Centrar
+        self._popup_backup.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() - 360) // 2
+        y = self.winfo_y() + (self.winfo_height() - 130) // 2
+        self._popup_backup.geometry(f"+{x}+{y}")
+
+        ctk.CTkLabel(
+            self._popup_backup, text="💾 Creando copia de seguridad...",
+            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
+            text_color=self.colores.get("texto", "#E8EDF2"),
+        ).pack(padx=20, pady=(20, 6))
+
+        self._label_backup_estado = ctk.CTkLabel(
+            self._popup_backup, text="Respaldo local en progreso...",
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            text_color=self.colores.get("texto_secundario", "#8899AA"),
+        )
+        self._label_backup_estado.pack(padx=20, pady=(0, 10))
+
+        barra = ctk.CTkProgressBar(
+            self._popup_backup, mode="indeterminate",
+            progress_color=self.colores.get("acento", "#00A8E8"),
+            fg_color=self.colores.get("entrada_fondo", "#1E3044"),
+        )
+        barra.pack(fill="x", padx=30, pady=(0, 16))
+        barra.start()
+
+        import threading
+
+        def _proceso_backup():
+            from utils.backup_service import realizar_backup_local, subir_a_google_drive
+            from loguru import logger
+
+            try:
+                exito, resultado = realizar_backup_local()
+                if exito:
+                    logger.info(f"Backup al cerrar creado: {resultado}")
+                    ruta_backup = resultado
+
+                    # Subir a la nube si está habilitado
+                    if (self.config.backup_nube_habilitado
+                            and self.config.backup_drive_folder_id):
+                        try:
+                            self._popup_backup.after(
+                                0, lambda: self._label_backup_estado.configure(
+                                    text="Subiendo respaldo a Google Drive..."))
+                        except Exception:
+                            pass
+                        ok, msg = subir_a_google_drive(
+                            ruta_backup, self.config.backup_drive_folder_id)
+                        if ok:
+                            logger.info(f"Backup subido a Drive: {msg}")
+                        else:
+                            logger.warning(f"Error al subir a Drive: {msg}")
+                else:
+                    logger.warning(f"Error en backup al cerrar: {resultado}")
+            except Exception as e:
+                logger.error(f"Error inesperado en backup al cerrar: {e}")
+            finally:
+                try:
+                    self._popup_backup.after(0, self.master.destroy)
+                except Exception:
+                    pass
+
+        threading.Thread(target=_proceso_backup, daemon=True).start()
+

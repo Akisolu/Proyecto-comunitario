@@ -68,6 +68,13 @@ class AppConfig(BaseModel):
         tamano_fuente:     Tamaño de fuente. Opciones: 'pequeno', 'normal', 'grande', 'muy_grande'.
         modo_num_historia: Modo de ingreso del N. de Historia. Opciones: 'manual', 'auto'.
         colores_personalizados: Colores del tema personalizado (solo aplica si tema='personalizado').
+
+        backup_al_cerrar:              Si True, genera respaldo automático al cerrar la app.
+        backup_programado_habilitado:  Si True, habilita el respaldo programado diario.
+        backup_programado_hora:        Hora del respaldo programado en formato 'HH:MM'.
+        backup_nube_habilitado:        Si True, sube los respaldos a Google Drive.
+        backup_drive_folder_id:        ID de la carpeta de Google Drive destino.
+        backup_ultimo_dia_ejecutado:   Fecha (YYYY-MM-DD) del último respaldo programado.
     """
     tema: str = Field(default="oscuro")
     tamano_fuente: str = Field(default="normal")
@@ -76,6 +83,14 @@ class AppConfig(BaseModel):
     colores_personalizados: ColoresPersonalizados = Field(
         default_factory=ColoresPersonalizados
     )
+
+    # ── Copias de Seguridad ──
+    backup_al_cerrar: bool = Field(default=True)
+    backup_programado_habilitado: bool = Field(default=False)
+    backup_programado_hora: str = Field(default="23:00")
+    backup_nube_habilitado: bool = Field(default=False)
+    backup_drive_folder_id: str = Field(default="")
+    backup_ultimo_dia_ejecutado: str = Field(default="")
 
 
 def cargar_config() -> AppConfig:

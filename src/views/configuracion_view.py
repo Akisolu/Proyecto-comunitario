@@ -5,14 +5,13 @@ Permite al usuario personalizar:
   • Tema de colores (oscuro, claro, personalizado con selectores visuales).
   • Tamaño de fuente (pequeño, normal, grande, muy grande) con vista previa.
   • Modo de número de historia (manual o automático).
+  • Copias de seguridad (local automático, programado por horario, nube).
 
 Los cambios se persisten en disco y se aplican en caliente al guardar
 mediante el callback on_config_changed(new_config).
 
-Cambios v2:
-    - Acepta tema/fuentes dinámicos desde el dashboard.
-    - Selector visual de color (SelectorColorPopup) para el tema personalizado.
-    - El cuadro de preview de color es clicable y abre el picker.
+Cambios v3:
+    - Sección de copias de seguridad con backup local y Google Drive.
 """
 
 import re
@@ -21,6 +20,11 @@ import customtkinter as ctk
 from models.config import AppConfig, cargar_config, guardar_config, ColoresPersonalizados
 from models.tema import obtener_tema, obtener_tamano_fuente, TEMA_OSCURO, TEMA_CLARO, TAMANOS_FUENTE
 from views.selector_color_widget import SelectorColorPopup
+from utils.backup_service import (
+    realizar_backup_local, subir_a_google_drive,
+    verificar_credenciales_drive, limpiar_backups_antiguos,
+)
+from utils.hilo_trabajo import ejecutar_en_hilo
 
 
 _PATRON_HEX = re.compile(r"^#[0-9A-Fa-f]{6}$")
@@ -96,6 +100,7 @@ class ConfiguracionView(ctk.CTkFrame):
         self._crear_seccion_fuente(scroll)
         self._crear_seccion_modo_historia(scroll)
         self._crear_seccion_paginacion(scroll)
+        self._crear_seccion_backup(scroll)
         self._crear_boton_guardar(scroll)
 
     # ── Encabezado ────────────────────────────────────────────────────
@@ -383,6 +388,234 @@ class ConfiguracionView(ctk.CTkFrame):
         ).pack(fill="x", padx=14, pady=10)
 
     # ══════════════════════════════════════════════════════════════════
+    #  SECCIÓN COPIAS DE SEGURIDAD
+    # ══════════════════════════════════════════════════════════════════
+
+    def _crear_seccion_backup(self, parent):
+        card = ctk.CTkFrame(
+            parent, fg_color=self.C_PANEL, corner_radius=12,
+            border_width=1, border_color=self.C_BORDE,
+        )
+        card.pack(fill="x", pady=(0, 14))
+
+        ctk.CTkLabel(
+            card, text="💾 Copias de Seguridad",
+            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
+            text_color=self.C_TEXTO, anchor="w",
+        ).pack(fill="x", padx=20, pady=(16, 10))
+
+        # ── Backup Local ──
+        marco_local = ctk.CTkFrame(card, fg_color=self.C_ENTRADA, corner_radius=8,
+                                   border_width=1, border_color=self.C_BORDE)
+        marco_local.pack(fill="x", padx=20, pady=(0, 8))
+
+        ctk.CTkLabel(
+            marco_local, text="Respaldo Local",
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+            text_color=self.C_TEXTO, anchor="w",
+        ).pack(fill="x", padx=14, pady=(10, 4))
+
+        # Checkbox: backup al cerrar
+        self.chk_backup_cerrar = ctk.CTkCheckBox(
+            marco_local, text="Crear copia automática al cerrar la aplicación",
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            text_color=self.C_TEXTO, fg_color=self.C_ACENTO,
+            hover_color=self.C_ACENTO_HOVER, border_color=self.C_BORDE,
+            checkmark_color="#FFFFFF",
+        )
+        if self.config.backup_al_cerrar:
+            self.chk_backup_cerrar.select()
+        self.chk_backup_cerrar.pack(fill="x", padx=14, pady=2)
+
+        # Checkbox: backup programado
+        self.chk_backup_programado = ctk.CTkCheckBox(
+            marco_local, text="Backup programado diario a las:",
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            text_color=self.C_TEXTO, fg_color=self.C_ACENTO,
+            hover_color=self.C_ACENTO_HOVER, border_color=self.C_BORDE,
+            checkmark_color="#FFFFFF",
+        )
+        if self.config.backup_programado_habilitado:
+            self.chk_backup_programado.select()
+        self.chk_backup_programado.pack(fill="x", padx=14, pady=2)
+
+        # Selector de hora
+        fila_hora = ctk.CTkFrame(marco_local, fg_color="transparent")
+        fila_hora.pack(fill="x", padx=14, pady=(2, 8))
+
+        hora_actual = self.config.backup_programado_hora
+        partes_hora = hora_actual.split(":")
+        h_val = partes_hora[0] if len(partes_hora) == 2 else "23"
+        m_val = partes_hora[1] if len(partes_hora) == 2 else "00"
+
+        ctk.CTkLabel(
+            fila_hora, text="Hora:",
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            text_color=self.C_TEXTO_SEC,
+        ).pack(side="left", padx=(20, 4))
+
+        self.combo_hora = ctk.CTkComboBox(
+            fila_hora, values=[f"{h:02d}" for h in range(24)],
+            width=60, height=28,
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            fg_color=self.C_PANEL, border_color=self.C_BORDE,
+            button_color=self.C_ACENTO, button_hover_color=self.C_ACENTO_HOVER,
+            text_color=self.C_TEXTO, dropdown_fg_color=self.C_PANEL,
+            dropdown_text_color=self.C_TEXTO, dropdown_hover_color=self.C_ACENTO,
+        )
+        self.combo_hora.set(h_val)
+        self.combo_hora.pack(side="left", padx=(0, 4))
+
+        ctk.CTkLabel(
+            fila_hora, text=":",
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+            text_color=self.C_TEXTO,
+        ).pack(side="left")
+
+        self.combo_minuto = ctk.CTkComboBox(
+            fila_hora, values=[f"{m:02d}" for m in range(0, 60, 5)],
+            width=60, height=28,
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            fg_color=self.C_PANEL, border_color=self.C_BORDE,
+            button_color=self.C_ACENTO, button_hover_color=self.C_ACENTO_HOVER,
+            text_color=self.C_TEXTO, dropdown_fg_color=self.C_PANEL,
+            dropdown_text_color=self.C_TEXTO, dropdown_hover_color=self.C_ACENTO,
+        )
+        self.combo_minuto.set(m_val)
+        self.combo_minuto.pack(side="left", padx=(4, 0))
+
+        # Botón de backup manual
+        self.btn_backup_local = ctk.CTkButton(
+            marco_local, text="📂 Crear Respaldo Local Ahora",
+            height=32, corner_radius=8,
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            fg_color=self.C_ACENTO, hover_color=self.C_ACENTO_HOVER,
+            text_color="#FFFFFF", command=self._ejecutar_backup_local,
+        )
+        self.btn_backup_local.pack(fill="x", padx=14, pady=(0, 10))
+
+        # ── Backup en la Nube (Google Drive) ──
+        marco_nube = ctk.CTkFrame(card, fg_color=self.C_ENTRADA, corner_radius=8,
+                                   border_width=1, border_color=self.C_BORDE)
+        marco_nube.pack(fill="x", padx=20, pady=(0, 16))
+
+        ctk.CTkLabel(
+            marco_nube, text="☁️ Respaldo en Google Drive",
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+            text_color=self.C_TEXTO, anchor="w",
+        ).pack(fill="x", padx=14, pady=(10, 4))
+
+        self.chk_backup_nube = ctk.CTkCheckBox(
+            marco_nube, text="Habilitar respaldo en Google Drive",
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            text_color=self.C_TEXTO, fg_color=self.C_ACENTO,
+            hover_color=self.C_ACENTO_HOVER, border_color=self.C_BORDE,
+            checkmark_color="#FFFFFF",
+        )
+        if self.config.backup_nube_habilitado:
+            self.chk_backup_nube.select()
+        self.chk_backup_nube.pack(fill="x", padx=14, pady=2)
+
+        # Folder ID
+        fila_folder = ctk.CTkFrame(marco_nube, fg_color="transparent")
+        fila_folder.pack(fill="x", padx=14, pady=4)
+
+        ctk.CTkLabel(
+            fila_folder, text="ID Carpeta Drive:", width=120,
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            text_color=self.C_TEXTO_SEC, anchor="w",
+        ).pack(side="left")
+
+        self.entrada_folder_id = ctk.CTkEntry(
+            fila_folder,
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            fg_color=self.C_PANEL, border_color=self.C_BORDE,
+            text_color=self.C_TEXTO, height=28, corner_radius=6,
+            placeholder_text="Ej: 1ABC2def3GHI4jkl5MNO...",
+        )
+        self.entrada_folder_id.insert(0, self.config.backup_drive_folder_id)
+        self.entrada_folder_id.pack(side="left", fill="x", expand=True)
+
+        # Estado de credenciales
+        tiene_creds = verificar_credenciales_drive()
+        texto_creds = "✅ google_credentials.json detectado" if tiene_creds else "⚠️ Falta google_credentials.json en database/"
+        color_creds = self.C_EXITO if tiene_creds else self.C_ERROR
+        ctk.CTkLabel(
+            marco_nube, text=texto_creds,
+            font=ctk.CTkFont(family="Segoe UI", size=10),
+            text_color=color_creds, anchor="w",
+        ).pack(fill="x", padx=14, pady=(4, 4))
+
+        # Botón de subir a Drive
+        self.btn_backup_nube = ctk.CTkButton(
+            marco_nube, text="☁️ Subir Respaldo a Google Drive Ahora",
+            height=32, corner_radius=8,
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            fg_color="#4285F4", hover_color="#3367D6",
+            text_color="#FFFFFF", command=self._ejecutar_backup_nube,
+        )
+        self.btn_backup_nube.pack(fill="x", padx=14, pady=(0, 10))
+
+    def _ejecutar_backup_local(self):
+        """Ejecuta un backup local manual en un hilo secundario."""
+        self.btn_backup_local.configure(state="disabled", text="Creando respaldo...")
+
+        def _on_resultado(resultado):
+            exito, mensaje = resultado
+            if exito:
+                limpiar_backups_antiguos(10)
+                self._mostrar_msg(f"✅ Respaldo local creado: {mensaje}", error=False)
+            else:
+                self._mostrar_msg(f"Error: {mensaje}", error=True)
+            self.btn_backup_local.configure(state="normal", text="📂 Crear Respaldo Local Ahora")
+
+        ejecutar_en_hilo(
+            self,
+            tarea=realizar_backup_local,
+            callback_exito=_on_resultado,
+            callback_error=lambda e: (
+                self._mostrar_msg(f"Error: {e}", error=True),
+                self.btn_backup_local.configure(state="normal", text="📂 Crear Respaldo Local Ahora"),
+            ),
+        )
+
+    def _ejecutar_backup_nube(self):
+        """Ejecuta un backup local y lo sube a Google Drive."""
+        folder_id = self.entrada_folder_id.get().strip()
+        if not folder_id:
+            self._mostrar_msg("Ingrese el ID de la carpeta de Google Drive.", error=True)
+            return
+        if not verificar_credenciales_drive():
+            self._mostrar_msg("Falta el archivo google_credentials.json en database/.", error=True)
+            return
+
+        self.btn_backup_nube.configure(state="disabled", text="Subiendo...")
+
+        def _tarea():
+            exito_local, ruta = realizar_backup_local()
+            if not exito_local:
+                return False, f"Error al crear backup local: {ruta}"
+            return subir_a_google_drive(ruta, folder_id)
+
+        def _on_resultado(resultado):
+            exito, mensaje = resultado
+            if exito:
+                self._mostrar_msg(f"✅ Respaldo subido a Drive exitosamente.", error=False)
+            else:
+                self._mostrar_msg(f"Error Drive: {mensaje}", error=True)
+            self.btn_backup_nube.configure(state="normal", text="☁️ Subir Respaldo a Google Drive Ahora")
+
+        ejecutar_en_hilo(
+            self,
+            tarea=_tarea,
+            callback_exito=_on_resultado,
+            callback_error=lambda e: (
+                self._mostrar_msg(f"Error: {e}", error=True),
+                self.btn_backup_nube.configure(state="normal", text="☁️ Subir Respaldo a Google Drive Ahora"),
+            ),
+        )
+
+    # ══════════════════════════════════════════════════════════════════
     #  GUARDAR
     # ══════════════════════════════════════════════════════════════════
 
@@ -424,12 +657,21 @@ class ConfiguracionView(ctk.CTkFrame):
                     return
                 colores_pers = self._recopilar_colores()
 
+            # Recopilar configuración de backup
+            hora_prog = f"{self.combo_hora.get()}:{self.combo_minuto.get()}"
+
             nueva = AppConfig(
                 tema=tema_valor,
                 tamano_fuente=tamano_valor,
                 modo_num_historia=modo_valor,
                 registros_por_pagina=paginacion_valor,
                 colores_personalizados=colores_pers,
+                backup_al_cerrar=bool(self.chk_backup_cerrar.get()),
+                backup_programado_habilitado=bool(self.chk_backup_programado.get()),
+                backup_programado_hora=hora_prog,
+                backup_nube_habilitado=bool(self.chk_backup_nube.get()),
+                backup_drive_folder_id=self.entrada_folder_id.get().strip(),
+                backup_ultimo_dia_ejecutado=self.config.backup_ultimo_dia_ejecutado,
             )
             guardar_config(nueva)
             self._mostrar_msg("✅ Configuración guardada correctamente", error=False)
