@@ -192,18 +192,21 @@ class BusquedaDAO:
                 dia, mes, anio = valor
                 if dia and str(dia).strip():
                     try:
+                        val_dia = f"{int(dia):02d}"
                         condiciones.append("strftime('%d', p.fecha_nacimiento) = ?")
-                        parametros.append(f"{int(dia):02d}")
+                        parametros.append(val_dia)
                     except ValueError: pass
                 if mes and str(mes).strip():
                     try:
+                        val_mes = f"{int(mes):02d}"
                         condiciones.append("strftime('%m', p.fecha_nacimiento) = ?")
-                        parametros.append(f"{int(mes):02d}")
+                        parametros.append(val_mes)
                     except ValueError: pass
                 if anio and str(anio).strip():
                     try:
+                        val_anio = f"{int(anio):04d}"
                         condiciones.append("strftime('%Y', p.fecha_nacimiento) = ?")
-                        parametros.append(f"{int(anio):04d}")
+                        parametros.append(val_anio)
                     except ValueError: pass
 
         # Si a pesar de evaluar los filtros, no quedó ninguna condición extra (más allá de p.estado = 1), entonces usamos obtener_todos()

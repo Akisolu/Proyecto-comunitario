@@ -81,8 +81,12 @@ class LoggingConnection:
     def __setattr__(self, name, value):
         if name == '_conn':
             self.__dict__['_conn'] = value
-        else:
+            return
+
+        try:
             setattr(self._conn, name, value)
+        except AttributeError:
+            self.__dict__[name] = value
 
     def __enter__(self):
         self._conn.__enter__()

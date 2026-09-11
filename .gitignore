@@ -8,3 +8,6 @@ database.db
 dist/
 build/
 main.spec
+.coverage
+htmlcov/
+.pytest_cache

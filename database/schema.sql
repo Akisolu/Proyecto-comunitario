@@ -73,24 +73,22 @@ CREATE VIRTUAL TABLE IF NOT EXISTS pacientes_fts USING fts5(
 );
 CREATE TRIGGER IF NOT EXISTS pacientes_ai AFTER INSERT ON pacientes
 BEGIN
-  INSERT INTO pacientes_fts(id_paciente, nombres, apellidos, cedula) 
-  VALUES (new.id, new.nombre1 || ' ' || COALESCE(new.nombre2, ''), new.apellido1 || ' ' || COALESCE(new.apellido2, ''), new.cedula);
+  INSERT INTO pacientes_fts(rowid, id_paciente, nombres, apellidos, cedula) 
+  VALUES (new.id, new.id, new.nombre1 || ' ' || COALESCE(new.nombre2, ''), new.apellido1 || ' ' || COALESCE(new.apellido2, ''), new.cedula);
 END;
 
 CREATE TRIGGER IF NOT EXISTS pacientes_ad AFTER DELETE ON pacientes
 BEGIN
-  INSERT INTO pacientes_fts(pacientes_fts, rowid, id_paciente, nombres, apellidos, cedula)
-  VALUES ('delete', old.id, old.id, old.nombre1 || ' ' || COALESCE(old.nombre2, ''), old.apellido1 || ' ' || COALESCE(old.apellido2, ''), old.cedula);
+  DELETE FROM pacientes_fts WHERE rowid = old.id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS pacientes_au AFTER UPDATE ON pacientes
 BEGIN
-  INSERT INTO pacientes_fts(pacientes_fts, rowid, id_paciente, nombres, apellidos, cedula)
-  VALUES ('delete', old.id, old.id, old.nombre1 || ' ' || COALESCE(old.nombre2, ''), old.apellido1 || ' ' || COALESCE(old.apellido2, ''), old.cedula);
+  DELETE FROM pacientes_fts WHERE rowid = old.id;
   INSERT INTO pacientes_fts(rowid, id_paciente, nombres, apellidos, cedula)
   VALUES (new.id, new.id, new.nombre1 || ' ' || COALESCE(new.nombre2, ''), new.apellido1 || ' ' || COALESCE(new.apellido2, ''), new.cedula);
 END;
-CREATE INDEX IF NOT EXISTS "idx_pacientes_numero_cedula" ON "pacientes" (
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_pacientes_numero_cedula" ON "pacientes" (
 	"cedula"
 );
 CREATE INDEX IF NOT EXISTS "idx_pacientes_primer_apellido" ON "pacientes" (
