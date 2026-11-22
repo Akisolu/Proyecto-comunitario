@@ -2,11 +2,12 @@
 
 *🇺🇸 [Read this in English](README.md)*
 
-> **Qué hace:** Una aplicación de escritorio que reemplaza las fichas de papel de una clínica local por registros digitales seguros y fáciles de consultar, que siguen funcionando incluso si se va la luz.
-> **Por qué importa:** Las fichas de papel se extraviaban, se deterioraban y se llenaban mal, lo que causaba errores y demoras en la atención.
-> **What it does:** A desktop app that replaces paper patient records at a local clinic with secure, searchable digital records that keep working during power outages.
-> **Why it matters:** Paper files were lost, damaged and filled in incorrectly, causing errors and delays in patient care.
->
+**Qué hace:** Una aplicación de escritorio que reemplaza las fichas de papel de una clínica local por registros digitales seguros y fáciles de consultar, protegidos contra daños si se corta la luz mientras se leen o escriben datos.
+**Por qué importa:** Las fichas de papel se extraviaban, se deterioraban y se llenaban mal, lo que causaba errores y demoras en la atención.
+
+**What it does:** A desktop app that replaces paper patient records at a local clinic with secure, searchable digital records that stay intact if the power goes out while data is being read or written.
+**Why it matters:** Paper files were lost, damaged and filled in incorrectly, causing errors and delays in patient care.
+
 > 📄 Versión en inglés: [README.md](README.md)
 
 ## Descripción general
